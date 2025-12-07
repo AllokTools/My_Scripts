@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+DOMAIN="inlanefreight.htb"
+NS="10.129.221.176"
+
+AXFR_OUT="axfr_${DOMAIN}.txt"
+ZONES_FILE="zones.txt"
+TXT_FILE="txt_from_zones.txt"
+
+Основний zone transfer
+dig axfr "$DOMAIN" @"$NS" > "$AXFR_OUT"
+
+Витягуємо ВСІ імена, що мають A-records
+awk '$4=="A"{print $1}' "$AXFR_OUT" \
+    | sed 's/\.$//' \
+    | sort -u > "$ZONES_FILE"
+
+Для кожного імені пробуємо AXFR і шукаємо TXT
+> "$TXT_FILE"
+while read zone; do
+  echo "=== $zone ===" | tee -a "$TXT_FILE"
+  dig axfr "$zone" @"$NS" \
+      | awk '$4=="TXT"{print}' \
+      | tee -a "$TXT_FILE"
+  echo | tee -a "$TXT_FILE"
+done < "$ZONES_FILE"
